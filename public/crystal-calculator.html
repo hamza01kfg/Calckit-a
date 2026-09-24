@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crystal Calculator — CalcKit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --glass: rgba(255, 255, 255, 0.55);
+      --glass-edge: rgba(255, 255, 255, 0.85);
+      --text: #0f172a;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: "Outfit", system-ui, sans-serif;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(56, 189, 248, 0.2), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(167, 139, 250, 0.15), transparent),
+        var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 40px;
+      color: #e2e8f0;
+    }
+    .credits {
+      text-align: center;
+      margin-bottom: 20px;
+      opacity: 0.7;
+      font-size: 13px;
+    }
+    .credits strong { color: #7dd3fc; font-weight: 600; }
+
+    /* Device shell */
+    .phone {
+      width: min(340px, 100%);
+      border-radius: 36px;
+      padding: 14px;
+      background: linear-gradient(160deg, #1e293b 0%, #0f172a 50%, #020617 100%);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.08),
+        0 40px 80px rgba(0,0,0,0.55),
+        inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .phone-inner {
+      border-radius: 28px;
+      padding: 18px 14px 16px;
+      background: linear-gradient(180deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95));
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    /* OLED-style display */
+    .display {
+      position: relative;
+      border-radius: 18px;
+      padding: 20px 18px 16px;
+      min-height: 110px;
+      margin-bottom: 16px;
+      background: #000;
+      overflow: hidden;
+      box-shadow:
+        inset 0 0 0 1px rgba(56, 189, 248, 0.25),
+        0 0 40px rgba(56, 189, 248, 0.12);
+    }
+    .display::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(56, 189, 248, 0.08), transparent 40%),
+        radial-gradient(ellipse at 70% 0%, rgba(125, 211, 252, 0.15), transparent 50%);
+      pointer-events: none;
+    }
+    .display-glow {
+      position: absolute;
+      top: -30%;
+      right: -10%;
+      width: 60%;
+      height: 80%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.2), transparent 70%);
+      filter: blur(20px);
+      pointer-events: none;
+      animation: breath 4s ease-in-out infinite;
+    }
+    @keyframes breath {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    .display-label {
+      position: relative;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(125, 211, 252, 0.55);
+      margin-bottom: 8px;
+    }
+    .display-value {
+      position: relative;
+      font-family: "JetBrains Mono", monospace;
+      font-size: clamp(1.6rem, 7vw, 2.1rem);
+      font-weight: 600;
+      text-align: right;
+      color: #e0f2fe;
+      text-shadow: 0 0 20px rgba(56, 189, 248, 0.45);
+      word-break: break-all;
+      line-height: 1.2;
+      min-height: 1.3em;
+    }
+
+    /* Crystal glass keys */
+    .pad {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .key {
+      position: relative;
+      height: 58px;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-family: "Outfit", sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      /* Crystal white glass */
+      background: linear-gradient(
+        165deg,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(241, 245, 249, 0.75) 40%,
+        rgba(203, 213, 225, 0.55) 100%
+      );
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.9) inset,
+        0 -1px 0 rgba(148, 163, 184, 0.35) inset,
+        0 8px 16px rgba(0, 0, 0, 0.25),
+        0 2px 0 rgba(15, 23, 42, 0.2);
+      backdrop-filter: blur(8px);
+      transition: transform 0.08s, box-shadow 0.08s, filter 0.08s;
+      overflow: hidden;
+    }
+    .key::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 45%;
+      border-radius: 16px 16px 40% 40%;
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.85),
+        rgba(255, 255, 255, 0)
+      );
+      pointer-events: none;
+    }
+    .key:active {
+      transform: translateY(3px) scale(0.98);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.7) inset,
+        0 2px 6px rgba(0, 0, 0, 0.2);
+      filter: brightness(0.96);
+    }
+    .key span {
+      position: relative;
+      z-index: 1;
+    }
+    .key.op {
+      color: #0369a1;
+      background: linear-gradient(
+        165deg,
+        rgba(224, 242, 254, 0.95),
+        rgba(186, 230, 253, 0.7),
+        rgba(125, 211, 252, 0.45)
+      );
+    }
+    .key.fn {
+      color: #9a3412;
+      background: linear-gradient(
+        165deg,
+        rgba(255, 247, 237, 0.95),
+        rgba(254, 215, 170, 0.65),
+        rgba(253, 186, 116, 0.4)
+      );
+    }
+    .key.eq {
+      color: #fff;
+      background: linear-gradient(165deg, #38bdf8 0%, #0284c7 50%, #0369a1 100%);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.4) inset,
+        0 8px 20px rgba(14, 165, 233, 0.4),
+        0 2px 0 #0c4a6e;
+    }
+    .key.eq::before {
+      background: linear-gradient(180deg, rgba(255,255,255,0.45), transparent);
+    }
+    .key.wide { grid-column: span 2; }
+
+    .foot {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 12px;
+      color: rgba(148, 163, 184, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <p class="credits">
+    <strong>CalcKit</strong> · Crystal Calculator UI demo<br />
+    Standalone HTML / CSS / JS — open in any browser
+  </p>
+
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="display">
+        <div class="display-glow"></div>
+        <div class="display-label">CalcKit</div>
+        <div class="display-value" id="screen">0</div>
+      </div>
+      <div class="pad" id="pad"></div>
+    </div>
+  </div>
+
+  <p class="foot">Crystal glass keys · OLED-style display · click sound</p>
+
+  <script>
+    const keys = [
+      ["C", "fn"], ["⌫", "fn"], ["%", "op"], ["÷", "op"],
+      ["7", ""], ["8", ""], ["9", ""], ["×", "op"],
+      ["4", ""], ["5", ""], ["6", ""], ["-", "op"],
+      ["1", ""], ["2", ""], ["3", ""], ["+", "op"],
+      ["0", "wide"], [".", ""], ["=", "eq"],
+    ];
+
+    const pad = document.getElementById("pad");
+    const screen = document.getElementById("screen");
+    let expr = "0";
+
+    let audioCtx;
+    function tick() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const t = audioCtx.currentTime;
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(1200, t);
+        o.frequency.exponentialRampToValueAtTime(400, t + 0.04);
+        g.gain.setValueAtTime(0.06, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start(t);
+        o.stop(t + 0.06);
+      } catch (e) {}
+    }
+
+    function setScreen(v) {
+      expr = v;
+      screen.textContent = v;
+    }
+
+    function press(k) {
+      tick();
+      if (k === "C") return setScreen("0");
+      if (k === "⌫") return setScreen(expr.length <= 1 ? "0" : expr.slice(0, -1));
+      if (k === "=") {
+        try {
+          const safe = expr.replace(/×/g, "*").replace(/÷/g, "/").replace(/%/g, "/100");
+          if (!/^[0-9+\-*/().\s]+$/.test(safe)) throw new Error();
+          const val = Function('"use strict"; return (' + safe + ")")();
+          setScreen(String(val));
+        } catch {
+          setScreen("Error");
+        }
+        return;
+      }
+      if (expr === "0" || expr === "Error") setScreen(k === "." ? "0." : k);
+      else setScreen(expr + k);
+    }
+
+    keys.forEach(([label, cls]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "key" + (cls ? " " + cls : "");
+      b.innerHTML = "<span>" + label + "</span>";
+      b.addEventListener("click", () => press(label));
+      pad.appendChild(b);
+    });
+  </script>
+</body>
+</html>
