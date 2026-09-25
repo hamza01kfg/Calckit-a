@@ -41,3 +41,6 @@ next-env.d.ts
 # feedback store
 data/
 .env*.local
+
+# Local Netlify folder
+.netlify
