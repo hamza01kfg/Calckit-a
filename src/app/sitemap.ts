@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { PAGE_SEO } from "@/lib/seo";
 import { BLOG_POSTS } from "@/lib/blogPosts";
 
-const site = "https://calckit-a.netlify.app";
+const site = "https://calckit.koderg.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = ["/", "/blog"];

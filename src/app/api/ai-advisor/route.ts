@@ -6,8 +6,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * POST /api/ai-advisor
- * Body: { toolId, inputs, result, lang? }
- * GEMINI_API_KEY must live only in server env (.env.local) — never in client code.
+ * GEMINI_API_KEY + GEMINI_MODEL from Netlify env only.
  */
 
 type Body = {
@@ -21,7 +20,6 @@ const TOOL_ID_RE = /^[a-z0-9\-]{1,40}$/i;
 const MAX_RESULT = 800;
 const MAX_INPUT_KEYS = 12;
 
-// simple in-memory rate limit (per server instance)
 const hits = new Map<string, { n: number; t: number }>();
 
 function clientKey(req: NextRequest): string {
@@ -52,31 +50,116 @@ function sanitizeInputs(raw: unknown): Record<string, string | number> {
     if (i >= MAX_INPUT_KEYS) break;
     const key = String(k).replace(/[^\w.\- ]/g, "").slice(0, 40);
     if (!key) continue;
-    if (typeof v === "number" && Number.isFinite(v)) {
-      out[key] = v;
-    } else if (typeof v === "string") {
-      out[key] = v.replace(/[<>]/g, "").slice(0, 80);
-    }
+    if (typeof v === "number" && Number.isFinite(v)) out[key] = v;
+    else if (typeof v === "string") out[key] = v.replace(/[<>]/g, "").slice(0, 80);
     i++;
   }
   return out;
 }
 
-function fallbackAdvice(toolId: string, inputs: Record<string, string | number>, lang: string): string {
+function looksIncomplete(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 40) return true;
+  if (/[(\[{,:\-–—]\s*$/.test(t)) return true;
+  // ends mid-sentence without punctuation
+  if (!/[.!?۔؟]\s*$/.test(t)) return true;
+  return false;
+}
+
+function fallbackAdvice(
+  toolId: string,
+  inputs: Record<string, string | number>,
+  lang: string
+): string {
   const isUr = lang === "ur";
   if (toolId === "emi" || toolId === "loan") {
     return isUr
       ? "Agar mumkin ho to monthly payment thora barhaein — total interest kam ho sakta hai aur loan jaldi khatam. Extra payment pehle principal par lagaye."
       : "If possible, raise the monthly payment slightly — total interest often drops and the loan finishes sooner. Apply extra payments to principal first.";
   }
-  if (toolId === "sip" || toolId === "compound") {
+  if (toolId === "sip") {
     return isUr
-      ? "Waqt aur regularity compound growth ka asasi hissa hain. Amount thora barha kar long horizon rakhna aksar behtar result deta hai."
-      : "Time and consistency drive compound growth. A slightly higher contribution over a longer horizon usually helps more than chasing returns.";
+      ? "SIP mein regularity aur time compound growth ka asasi hissa hain. Monthly amount thora barha kar long horizon rakhna aksar behtar result deta hai. Yeh estimate hai, guarantee nahi."
+      : "With SIP, consistency and time matter most. A slightly higher monthly amount over a longer horizon usually helps more than chasing returns. This is an estimate, not a guarantee.";
+  }
+  if (toolId === "compound") {
+    return isUr
+      ? "Compound interest time ke sath tezi se badhta hai. Rate aur tenure dono check karein — chhota rate bhi lambi muddat pe bada farq la sakta hai."
+      : "Compound growth accelerates with time. Check both rate and tenure — even a modest rate can matter a lot over long periods.";
+  }
+  if (toolId === "roi") {
+    return isUr
+      ? "Basic ROI time ignore karta hai. Do investments compare karte waqt tenure bhi dekhein; time-aware metric ke liye CAGR behtar ho sakta hai."
+      : "Basic ROI ignores time. When comparing investments, also look at how long money was locked; for time-aware returns, CAGR is often more useful.";
+  }
+  if (toolId === "bmi") {
+    return isUr
+      ? "BMI ek rough health indicator hai — athletes aur kuch medical cases mein misleading ho sakta hai. Bari change se pehle doctor se mashwara lein."
+      : "BMI is a rough indicator — it can mislead for athletes and some medical cases. For major changes, talk to a clinician.";
+  }
+  if (toolId === "tax" || toolId === "discount" || toolId === "percentage") {
+    return isUr
+      ? "Numbers dobara check karein. Tax/discount rules region ke hisaab se alag ho sakte hain — yeh general calculator hai."
+      : "Double-check the numbers. Tax and discount rules vary by region — this is a general calculator only.";
+  }
+  if (toolId === "currency") {
+    return isUr
+      ? "Exchange rates change hote rehte hain. Badi transfer se pehle bank/fintech ka live rate confirm karein."
+      : "Exchange rates move constantly. Confirm the live rate with your bank or provider before a large transfer.";
+  }
+  if (toolId === "age") {
+    return isUr
+      ? "Age exact DOB se nikalti hai. Official forms pe document wali date use karein."
+      : "Age is calculated from the date of birth you enter. For official forms, use the date on your documents.";
   }
   return isUr
-    ? "Yeh estimate hai — apne numbers dobara check karein. Bari faisle se pehle financial advisor se mashwara lein."
+    ? "Yeh estimate hai — apne numbers dobara check karein. Bari faisle se pehle qualified advisor se mashwara lein."
     : "This is an estimate — double-check your numbers. For major decisions, consult a qualified advisor.";
+}
+
+async function callGemini(
+  apiKey: string,
+  model: string,
+  system: string,
+  userPrompt: string
+): Promise<{ text: string; status: number; rawErr: string }> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const gRes = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: `${system}\n\n${userPrompt}` }] }],
+      generationConfig: {
+        temperature: 0.35,
+        maxOutputTokens: 512,
+        // discourage cut-offs
+        stopSequences: [],
+      },
+    }),
+  });
+
+  if (!gRes.ok) {
+    const errText = await gRes.text().catch(() => "");
+    return { text: "", status: gRes.status, rawErr: errText.slice(0, 300) };
+  }
+
+  const data = (await gRes.json()) as {
+    candidates?: {
+      finishReason?: string;
+      content?: { parts?: { text?: string }[] };
+    }[];
+  };
+  const cand = data.candidates?.[0];
+  const text =
+    cand?.content?.parts?.map((p) => p.text || "").join("").trim() || "";
+  // MAX_TOKENS / SAFETY often = incomplete
+  if (cand?.finishReason && cand.finishReason !== "STOP") {
+    console.error("Gemini finishReason", cand.finishReason, text.slice(0, 80));
+  }
+  return { text, status: 200, rawErr: "" };
 }
 
 export async function POST(req: NextRequest) {
@@ -107,69 +190,54 @@ export async function POST(req: NextRequest) {
         ? body.result.replace(/[<>]/g, "").slice(0, MAX_RESULT)
         : "";
     const lang = body.lang === "ur" ? "ur" : "en";
+    const fb = fallbackAdvice(toolId, inputs, lang);
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      // No key: still return useful offline tip (never leak env errors to client beyond this)
-      return NextResponse.json({
-        ok: true,
-        source: "fallback",
-        advice: fallbackAdvice(toolId, inputs, lang),
-      });
+      return NextResponse.json({ ok: true, source: "fallback", advice: fb });
     }
 
     const system =
       lang === "ur"
-        ? "Tum ek short financial helper ho. 2-3 jumle Roman Urdu/English mix mein do. Koi guarantee mat do. Sirf general education."
-        : "You are a concise financial helper. Give 2-3 short sentences of general education only. No guarantees. No investment solicitation.";
+        ? "Tum short financial helper ho. EXACTLY 2 complete sentences in Roman Urdu/English mix. End every reply with a full stop. Never cut mid-sentence. No guarantees."
+        : "You are a concise financial helper. Write EXACTLY 2 complete sentences. Always end with a period. Never stop mid-sentence or mid-word. General education only. No guarantees.";
 
     const userPrompt = [
       `Tool: ${toolId}`,
       `Inputs: ${JSON.stringify(inputs)}`,
       `Result summary: ${result || "(none)"}`,
-      "Give one practical insight (e.g. effect of higher payment, longer tenure, or SIP increase). Keep under 80 words. Always finish with a complete sentence — never cut mid-word or mid-parenthesis.",
+      "Reply with exactly 2 finished sentences of practical insight. Under 70 words. Must end with a period.",
     ].join("\n");
 
-    // Gemini REST (v1beta) — model from Netlify env GEMINI_MODEL
-    // Example: gemini-2.0-flash | gemini-2.5-flash | gemini-1.5-flash
-    const rawModel = (process.env.GEMINI_MODEL || "gemini-2.0-flash").trim();
-    const model = rawModel.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 64) || "gemini-2.0-flash";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const rawModel = (process.env.GEMINI_MODEL || "gemini-3.5-flash").trim();
+    const model =
+      rawModel.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 64) || "gemini-3.5-flash";
 
-    const gRes = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `${system}\n\n${userPrompt}` }] }],
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 320,
-        },
-      }),
-    });
+    // Primary model
+    let { text, status, rawErr } = await callGemini(apiKey, model, system, userPrompt);
 
-    if (!gRes.ok) {
-      const errText = await gRes.text().catch(() => "");
-      console.error("Gemini error", gRes.status, errText.slice(0, 200));
-      return NextResponse.json({
-        ok: true,
-        source: "fallback",
-        advice: fallbackAdvice(toolId, inputs, lang),
-      });
+    // If model fails (404/deprecated), try current Flash models
+    const fallbacks = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-2.5-flash"].filter(
+      (m) => m !== model
+    );
+    if (!text || status !== 200) {
+      for (const fbModel of fallbacks) {
+        console.error("Gemini primary failed", status, rawErr.slice(0, 120), "trying", fbModel);
+        const retry = await callGemini(apiKey, fbModel, system, userPrompt);
+        text = retry.text;
+        status = retry.status;
+        rawErr = retry.rawErr;
+        if (text && status === 200) break;
+      }
     }
 
-    const data = (await gRes.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-    const text =
-      data.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("").trim() ||
-      "";
-
-    if (!text) {
+    if (!text || looksIncomplete(text)) {
+      console.error("Gemini incomplete/empty", { model, status, preview: text.slice(0, 100), rawErr: rawErr.slice(0, 120) });
+      // Always return a COMPLETE tip — never truncated AI fragment
       return NextResponse.json({
         ok: true,
         source: "fallback",
-        advice: fallbackAdvice(toolId, inputs, lang),
+        advice: fb,
       });
     }
 

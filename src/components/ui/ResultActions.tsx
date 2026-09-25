@@ -648,7 +648,7 @@ export default function ResultActions({
         disabled={pngBusy}
         title="Download PNG image of result card"
       >
-        {pngBusy ? "…" : "🖼 PNG"}
+        {pngBusy ? "…" : "PNG"}
       </button>
       <button type="button" className="btn-action ghost" onClick={downloadCsv} title="Download CSV">
         CSV

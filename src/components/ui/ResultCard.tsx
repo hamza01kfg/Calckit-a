@@ -19,7 +19,7 @@ type Props = {
 };
 
 /**
- * Premium glass result card — fintech dashboard style
+ * Premium result card — clean labels (no glued icon+text)
  */
 export default function ResultCard({
   title = "Calculation Result",
@@ -53,10 +53,8 @@ export default function ResultCard({
             <div className="fx-card__grid">
               {breakdown.map((b) => (
                 <div key={b.label} className="fx-card__stat">
-                  <div className="fx-card__stat-label">
-                    {b.icon ? <span className="fx-card__stat-icon">{b.icon}</span> : null}
-                    {b.label}
-                  </div>
+                  {/* Label only — no emoji/icon prefix (was gluing: ₹Contribution) */}
+                  <div className="fx-card__stat-label">{b.label}</div>
                   <div className="fx-card__stat-value">{b.value}</div>
                 </div>
               ))}
