@@ -127,11 +127,13 @@ export async function POST(req: NextRequest) {
       `Tool: ${toolId}`,
       `Inputs: ${JSON.stringify(inputs)}`,
       `Result summary: ${result || "(none)"}`,
-      "Give one practical insight (e.g. effect of higher payment, longer tenure, or SIP increase). Keep under 60 words.",
+      "Give one practical insight (e.g. effect of higher payment, longer tenure, or SIP increase). Keep under 80 words. Always finish with a complete sentence — never cut mid-word or mid-parenthesis.",
     ].join("\n");
 
-    // Gemini REST (v1beta) — model can be overridden via env
-    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    // Gemini REST (v1beta) — model from Netlify env GEMINI_MODEL
+    // Example: gemini-2.0-flash | gemini-2.5-flash | gemini-1.5-flash
+    const rawModel = (process.env.GEMINI_MODEL || "gemini-2.0-flash").trim();
+    const model = rawModel.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 64) || "gemini-2.0-flash";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const gRes = await fetch(url, {
@@ -141,7 +143,7 @@ export async function POST(req: NextRequest) {
         contents: [{ role: "user", parts: [{ text: `${system}\n\n${userPrompt}` }] }],
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 180,
+          maxOutputTokens: 320,
         },
       }),
     });
@@ -174,7 +176,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       source: "gemini",
-      advice: text.slice(0, 600),
+      advice: text.replace(/\s+/g, " ").trim().slice(0, 900),
     });
   } catch (e) {
     console.error(e);

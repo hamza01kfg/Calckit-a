@@ -705,11 +705,13 @@ textarea:focus {
   padding: 1px;
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--accent) 55%, transparent),
-    rgba(30, 40, 36, 0.15) 40%,
-    color-mix(in srgb, var(--accent) 25%, transparent)
+    color-mix(in srgb, var(--accent) 35%, transparent),
+    rgba(30, 40, 36, 0.12) 45%,
+    color-mix(in srgb, var(--accent) 15%, transparent)
   );
-  box-shadow: var(--shadow-lg), 0 0 40px var(--accent-glow);
+  /* tight shadow — no huge green bloom */
+  box-shadow: var(--shadow), 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+  overflow: hidden;
 }
 .fx-card--orange {
   background: linear-gradient(
@@ -722,9 +724,10 @@ textarea:focus {
 .fx-card__glow {
   pointer-events: none;
   position: absolute;
-  inset: -15%;
-  background: radial-gradient(circle at 50% 0%, var(--accent-glow), transparent 55%);
+  inset: 0;
+  background: radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 50%);
   z-index: 0;
+  opacity: 0.55;
 }
 .fx-card__inner {
   position: relative;
@@ -754,7 +757,7 @@ textarea:focus {
   font-weight: 700;
   background: linear-gradient(145deg, var(--accent), var(--accent-2));
   color: #fff;
-  box-shadow: 0 4px 14px var(--accent-glow);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .fx-card__title {
   font-size: 14px;
@@ -2034,9 +2037,45 @@ html[dir="rtl"] .nav-links {
   align-items: center;
   gap: 6px;
 }
-/* SVG icons adapt in dark mode if black fills — soft invert when needed */
-[data-theme="dark"] .ui-icon,
-[data-theme="dark"] .tool-icon-img,
-[data-theme="dark"] .brand-logo {
-  filter: none;
+/* Dark theme: force light icons (html + body selectors) */
+html[data-theme="dark"] .ui-icon,
+html[data-theme="dark"] .tool-icon-img,
+html[data-theme="dark"] .icon img,
+html[data-theme="dark"] .icon-img-wrap img,
+html[data-theme="dark"] .nav-item img,
+html[data-theme="dark"] .btn-action img,
+html[data-theme="dark"] .tool-nav__back img,
+html[data-theme="dark"] .tool-nav__home img,
+html[data-theme="dark"] .theme-toggle img,
+html[data-theme="dark"] .lang-icon img,
+html[data-theme="dark"] .tool-feedback__btn img,
+html[data-theme="dark"] .ai-insight-card img {
+  filter: invert(1) brightness(1.25) contrast(1.05) !important;
+  opacity: 0.95;
+}
+html[data-theme="dark"] .brand-logo {
+  filter: invert(1) brightness(1.15) !important;
+  opacity: 0.98;
+}
+/* Don't invert if icon is already on bright accent badge */
+html[data-theme="dark"] .fx-card__badge img {
+  filter: none !important;
+}
+
+/* AI insight — never clip advice text */
+.ai-insight-card {
+  overflow: visible;
+  max-height: none;
+}
+.ai-insight-body {
+  overflow: visible;
+}
+.ai-insight-text {
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  color: var(--text, inherit);
+  font-size: 0.95rem;
 }
