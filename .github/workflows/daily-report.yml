@@ -1,0 +1,29 @@
+name: Daily Analytics Report
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # Rozana subah 9 baje (UTC)
+  workflow_dispatch: # Isse aap manually bhi run kar sakte hain
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install @google-analytics/data nodemailer
+
+      - name: Run Analysis Script
+        env:
+          GA_PROPERTY_ID: ${{ secrets.GA_PROPERTY_ID }}
+          GA_SERVICE_ACCOUNT_KEY: ${{ secrets.GA_SERVICE_ACCOUNT_KEY }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+        run: node scripts/daily-report.js

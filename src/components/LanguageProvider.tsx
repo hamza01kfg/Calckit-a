@@ -33,7 +33,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = lang === "ur" ? "ur" : "en";
-    document.documentElement.dir = lang === "ur" ? "rtl" : "ltr";
   }, [lang]);
 
   const setLang = useCallback((l: Lang) => {

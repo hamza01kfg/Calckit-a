@@ -2,6 +2,54 @@
    CalcKit — Modern Premium UI (Glass + Fintech 2025)
    ========================================================= */
 
+@font-face {
+  font-family: 'Jameel Noori Nastaleeq';
+  src: url('/fonts/jameel-noori-nastaleeq-regular/Jameel Noori Nastaleeq Regular/Jameel Noori Nastaleeq Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans Arabic';
+  src: url('/fonts/noto-sans-arabic/static/NotoSansArabic-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans Devanagari';
+  src: url('/fonts/noto-sans-devanagari/NotoSansDevanagari-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  src: url('/fonts/noto-sans-bengali/static/NotoSansBengali-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans JP';
+  src: url('/fonts/noto-sans-jp/NotoSansJP-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('/fonts/noto-sans-sc/NotoSansSC-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root,
 [data-theme="light"] {
   --ink: #0c1222;
@@ -29,6 +77,15 @@
   --header-h: 68px;
   --glass-blur: 20px;
 }
+
+/* Language specific fonts */
+[lang="ur"] { --font: "Jameel Noori Nastaleeq", "Noto Sans Arabic", "Sora", sans-serif; }
+[lang="hi"] { --font: "Noto Sans Devanagari", "Sora", sans-serif; }
+[lang="ar"] { --font: "Noto Sans Arabic", "Sora", sans-serif; }
+[lang="bn"] { --font: "Noto Sans Bengali", "Sora", sans-serif; }
+[lang="ja"] { --font: "Noto Sans JP", "Sora", sans-serif; }
+[lang="zh"] { --font: "Noto Sans SC", "Sora", sans-serif; }
+
 
 [data-theme="dark"] {
   --ink: #f1f5f9;
@@ -170,8 +227,60 @@ header {
 @media (max-width: 800px) {
   .nav-links {
     display: none;
+    position: absolute;
+    top: var(--header-h);
+    left: 0;
+    right: 0;
+    background: var(--surface-solid);
+    flex-direction: column;
+    padding: 16px;
+    gap: 8px;
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow-lg);
+    z-index: 40;
+    animation: slideDown 0.2s ease-out;
+  }
+  .nav-links.is-open {
+    display: flex;
+  }
+  .nav-links a {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
   }
 }
+
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.menu-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  z-index: 51;
+}
+
+.hamburger {
+  font-size: 24px;
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1;
+}
+
+@media (max-width: 800px) {
+  .menu-toggle {
+    display: block;
+    order: 2; /* Put hamburger after brand but before actions if needed, or just leave it */
+  }
+  .nav {
+    justify-content: space-between;
+  }
+}
+
 
 /* ----- Buttons ----- */
 button,
@@ -1902,29 +2011,98 @@ th {
 }
 
 .lang-switch {
+  position: relative;
   display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  overflow: hidden;
+  align-items: center;
 }
-.lang-btn {
+
+.lang-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-solid);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 600;
-  padding: 7px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lang-trigger:hover {
+  background: var(--bg-2);
+  border-color: var(--accent);
+}
+
+.lang-trigger .current-lang {
+  font-size: 12px;
+}
+
+.lang-trigger .rotate {
+  transform: rotate(180deg);
+  transition: transform 0.2s ease;
+}
+
+.lang-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--surface-solid);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 100;
+  animation: slideDown 0.2s ease-out;
+}
+
+.lang-category {
+  background: var(--bg-2);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.lang-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.lang-dropdown .lang-btn {
+  width: 100%;
+  text-align: left;
   border: 0;
   border-radius: 0;
-  background: transparent;
-  color: var(--muted);
+  padding: 10px 12px;
+  font-size: 13px;
+  transition: background 0.2s ease;
 }
-.lang-btn.is-active {
-  background: var(--ink);
-  color: var(--paper);
+
+.lang-dropdown .lang-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent-2);
 }
-[data-theme="dark"] .lang-btn.is-active {
-  background: var(--accent-2);
-  color: #042f2e;
+
+.lang-dropdown .lang-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-2);
+  font-weight: 600;
 }
-html[dir="rtl"] .nav-links {
+
+[dir="rtl"] .nav-links {
   direction: rtl;
 }
 

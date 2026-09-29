@@ -48,7 +48,7 @@ export default function SearchModal() {
         onClick={() => setOpen(true)}
         title="Search (Ctrl+K)"
       >
-        <UiIcon name="search" size={16} /> <span>Search</span>
+        <UiIcon name="search" size={16} />
       </button>
     );
   }
